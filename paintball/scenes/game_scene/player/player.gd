@@ -27,12 +27,13 @@ var CLIMB_DECELERATION: float = 50.0
 
 # Stat
 @export var HEALTH: float = 100.0
-@export var MELEE_DMG: float = 30.0
+@export var MELEE_DMG: float = 40.0
 @export var MELEE_KNOCKBACK: float = 600.0
-@export var PROJECTILE_DMG: float = 20.0
+@export var PROJECTILE_DMG: float = 50.0
 @export var PROJECTILE_SPEED: float = 800.0
 @export var PROJECTILE_KNOCKBACK: float = 800.0
 const JUMP_VELOCITY = -1200.0
+var SLOWNESS_MODIFIER: float = 0.6
 @export var DASH_CD: float = 0.8
 var DASH_DURATION: float = 0.5
 var DASH_DISTANCE: float = 5.0
@@ -68,7 +69,15 @@ var shoot_cd: float = 0.0
 var dir: float
 var dash_dir: float
 
+var held_bucket: Node2D = null
+@onready var bucket_slot: Marker2D = $BucketPosition
+
 var is_dead: bool = false
+var iframe: float = 1.0
+
+# Crouching
+var is_crouching: bool = false
+@onready var hurtbox: CollisionShape2D = $Hurtbox
 
 # Climbing
 @onready var climbup_hitbox: Area2D = $ClimbUpDetector
@@ -86,6 +95,7 @@ var CLIMB_CD: float = 0.2
 # Debuff
 var is_stun: bool = false
 var STUN_CD: float = 1.0
+var is_slow: bool = false
 
 # Melee
 @onready var melee_hitbox: Marker2D = $Melee
@@ -99,12 +109,12 @@ var is_aiming: bool = false
 const PROJECTILE_SCENE = preload("res://scenes/game_scene/projectile/projectile.tscn")
 
 # World Boundary
-const Y_BOUNDARY = 1500
+const Y_BOUNDARY = 200
 
 # Camera
 const MIN_SCREEN_HEIGHT = 550
-const CAMERA_MIN_X = -800
-const CAMERA_MAX_X = 800
+const CAMERA_MIN_X = -848
+const CAMERA_MAX_X = 864
 const CAMERA_Y = -648.5
 @onready var camera: Camera2D = $Camera2D
 @onready var camera_pos: Vector2 = position.clamp(Vector2(CAMERA_MIN_X,CAMERA_Y),Vector2(CAMERA_MAX_X,CAMERA_Y))
@@ -112,12 +122,19 @@ var camera_i: Vector2 = Vector2.ZERO
 var screens_merging = false
 var camera_target = Vector2.ZERO
 
+# UI
+const INDICATOR_Y = -60
+const INDICATOR_BUCKET_Y = -90
+@onready var StunBar: TextureProgressBar = $StunBar
+@onready var DashBar: TextureProgressBar = $DashBar
+var stun_max: float = 1.
+
 # User Input Mapping
-func _input(event: InputEvent) -> void:
-	if !is_spawned:
-		return
+#func _input(event: InputEvent) -> void:
+#	if !is_spawned:
+#		return
 	
-func _read_player_input(up: String, down: String, left: String, right: String, jump: String, dash: String, melee: String, shoot: String) -> void:
+func _read_player_input(a_up: String, a_down: String, a_left: String, a_right: String, a_jump: String, a_dash: String, a_melee: String, a_shoot: String) -> void:
 	if !is_spawned:
 		input_up = false
 		input_down = false
@@ -131,54 +148,58 @@ func _read_player_input(up: String, down: String, left: String, right: String, j
 		input_dialdown = false
 		return
 	
-	var final_up = up
-	var final_down = down
-	var final_left = left
-	var final_right = right
-	
 	if is_stun:
 		input_up = false
 		input_down = false
-		input_left = Input.is_action_pressed(final_left)
-		input_right = Input.is_action_pressed(final_right)
+		input_left = Input.is_action_pressed(a_left)
+		input_right = Input.is_action_pressed(a_right)
 		input_jump = false
-		input_dash = Input.is_action_just_pressed(dash)
+		input_dash = Input.is_action_just_pressed(a_dash)
 		input_melee = false
 		input_shoot = false
 		input_dialup = false
 		input_dialdown = false
 		return
 	
-	input_up = Input.is_action_pressed(final_up)
-	input_down = Input.is_action_pressed(final_down)
-	input_left = Input.is_action_pressed(final_left)
-	input_right = Input.is_action_pressed(final_right)
-	input_jump = Input.is_action_just_pressed(jump)
-	input_dash = Input.is_action_just_pressed(dash)
-	input_melee = Input.is_action_just_pressed(melee)
-	input_shoot = Input.is_action_pressed(shoot)
+	input_up = Input.is_action_pressed(a_up)
+	input_down = Input.is_action_pressed(a_down)
+	input_left = Input.is_action_pressed(a_left)
+	input_right = Input.is_action_pressed(a_right)
+	input_jump = Input.is_action_just_pressed(a_jump)
+	input_dash = Input.is_action_just_pressed(a_dash)
+	input_melee = Input.is_action_just_pressed(a_melee)
+	input_shoot = Input.is_action_pressed(a_shoot)
 	input_dialup = false
 	input_dialdown = false
 	
 	if is_aiming:
 		input_up = false
 		input_down = false
-		input_left = Input.is_action_pressed(final_left)
-		input_right = Input.is_action_pressed(final_right)
+		input_left = Input.is_action_pressed(a_left)
+		input_right = Input.is_action_pressed(a_right)
 		input_jump = false
 		input_dash = false
-		input_melee = Input.is_action_just_pressed(melee)
-		input_shoot = Input.is_action_just_released(shoot)
-		input_dialup = Input.is_action_pressed(up)
-		input_dialdown = Input.is_action_pressed(down)
-		input_finedial = Input.is_action_pressed(jump)
+		input_melee = Input.is_action_just_pressed(a_melee)
+		input_shoot = Input.is_action_just_released(a_shoot)
+		input_dialup = Input.is_action_pressed(a_up)
+		input_dialdown = Input.is_action_pressed(a_down)
+		input_finedial = Input.is_action_pressed(a_jump)
+	
+	if input_left and input_right:
+		input_left = false
+		input_right = false
 	
 func reset_state():
 	is_stun = false
+	is_crouching = false
+	is_climbing = false
 	if is_aiming:
 		exit_aiming()
+	is_slow = false
+	if is_instance_valid(held_bucket):
+		held_bucket.queue_free()
+	held_bucket = null
 	is_dead = false
-	is_climbing = false
 	HEALTH = 100.0
 	base_velocity = 0.0
 	knockback_velocity = 0.0
@@ -187,9 +208,15 @@ func reset_state():
 	melee_cd = 0
 	shoot_cd = 0
 	climb_cd = 0
+	stun_cd = 0
+	self.visible = true
+	set_physics_process(true)
+	hurtbox.set_deferred("disabled", false)
 	
 func _ready() -> void:
 	add_to_group("player")
+	if hurtbox and hurtbox.shape:
+		hurtbox.shape = hurtbox.shape.duplicate()
 	aim_dot.visible = false
 	is_spawned = true
 	camera.position = camera_pos
@@ -201,6 +228,19 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if is_dead:
 		return
+	
+	# UI
+	StunBar.value = stun_cd/stun_max
+	StunBar.Scale = camera.zoom.x
+	DashBar.value = dash_cd/DASH_CD
+	DashBar.Scale = camera.zoom.x
+	if is_instance_valid(held_bucket):
+		StunBar.Location = Vector2(0,INDICATOR_BUCKET_Y)
+		DashBar.Location = Vector2(0,INDICATOR_BUCKET_Y)
+	else:
+		StunBar.Location = Vector2(0,INDICATOR_Y)
+		DashBar.Location = Vector2(0,INDICATOR_Y)
+	
 	
 	match control_type:
 		"P1":
@@ -248,6 +288,23 @@ func _physics_process(delta: float) -> void:
 		# Gravity
 		if not grounded:
 			velocity.y += GRAVITY * delta
+	# Crouching
+	if not is_aiming and not is_stun and not is_climbing and grounded and input_down:
+		is_crouching = true
+	else:
+		is_crouching = false
+	if is_crouching:
+		hurtbox.shape.size = Vector2(52,36)
+		if facing_dir == -1.0:
+			hurtbox.position = Vector2(-10,14)
+			bucket_slot.position = Vector2(-20,-20)
+		else:
+			hurtbox.position = Vector2(10,14)
+			bucket_slot.position = Vector2(20,-20)
+	else:
+		hurtbox.shape.size = Vector2(32,64)
+		hurtbox.position = Vector2.ZERO
+		bucket_slot.position = Vector2(0,-48)
 	# Horizontal movement
 	if input_right:
 		facing_dir = 1.0
@@ -260,6 +317,8 @@ func _physics_process(delta: float) -> void:
 	# Debuff override
 	if is_aiming or is_stun or is_climbing:
 		dir = 0.0
+	if is_slow or is_crouching:
+		dir *= SLOWNESS_MODIFIER
 	# Jumping action
 	if input_jump and is_on_floor() and not is_aiming:
 		velocity.y = JUMP_VELOCITY
@@ -286,7 +345,7 @@ func _physics_process(delta: float) -> void:
 	
 	velocity.x = base_velocity + knockback_velocity
 	move_and_slide()
-	if not is_aiming and not is_climbing:
+	if not is_aiming and not is_stun and not is_climbing:
 		# Dash
 		if input_dash and dash_cd <= 0:
 				dash_dir = facing_dir
@@ -333,7 +392,7 @@ func _physics_process(delta: float) -> void:
 			center.rotation = shoot_angle
 			
 			if input_shoot and shoot_cd <= 0:
-				shoot_projectile(PROJECTILE_DMG, PROJECTILE_SPEED, PROJECTILE_KNOCKBACK, shoot_angle, PLAYER_ID ,TEAM_ID)
+				shoot_projectile(PROJECTILE_DMG, PROJECTILE_SPEED, PROJECTILE_KNOCKBACK, facing_dir, shoot_angle, PLAYER_ID ,TEAM_ID)
 				exit_aiming()
 				shoot_cd = SHOOT_CD
 			if input_melee:
@@ -348,6 +407,7 @@ func _physics_process(delta: float) -> void:
 	melee_cd = max(melee_cd - delta, 0.0)
 	aim_cd = max(aim_cd - delta, 0.0)
 	shoot_cd = max(shoot_cd - delta, 0.0)
+	iframe = max(iframe - delta, 0.0)
 	
 	# World Boundary
 	if position.y > Y_BOUNDARY:
@@ -359,23 +419,34 @@ func _physics_process(delta: float) -> void:
 func take_damage(amount: float, attacker_id: int, attacker_team: int) -> void:
 	if is_dead:
 		return
-	
+	if iframe > 0 and attacker_team != 0:
+		return
+		
 	HEALTH -= amount * damage_reduction
 	if HEALTH <= 0.0:
+		if is_instance_valid(held_bucket):
+			held_bucket.transfer(attacker_id, attacker_team)
 		is_dead = true
 		velocity = Vector2.ZERO
 		base_velocity = 0.0
 		knockback_velocity = 0.0
-		
-		player_eliminated.emit(self)
+		self.visible = false
+		set_physics_process(false)
+		hurtbox.set_deferred("disabled", true)
+		player_eliminated.emit(self, attacker_id, attacker_team)
 
-func apply_knockback(dir: float, knockback: float) -> void:
+func apply_knockback(k_dir: float, knockback: float, stun_time: float = STUN_CD) -> void:
+	if iframe > 0:
+		return
 	if is_climbing == true:
 		is_climbing = false
+	is_crouching = false
 	exit_aiming()
 	is_stun = true
-	stun_cd = STUN_CD
-	knockback_velocity += dir * knockback
+	if stun_cd < stun_time:
+		stun_cd = stun_time
+		stun_max = stun_time
+	knockback_velocity += k_dir * knockback
 	
 # Utility Function
 
@@ -424,12 +495,12 @@ func set_climbing(state: bool) -> void:
 	# Disable platform Collision 1 for passthrough
 	set_collision_mask_value(1, not state)
 		
-func melee(base_damage: float, knockback: float, facing_dir: float, attacker_id: int, attacker_team: int) -> void:
+func melee(base_damage: float, knockback: float, m_facing_dir: float, attacker_id: int, attacker_team: int) -> void:
 	var melee_instance = MELEE_SCENE.instantiate()
 	# Melee Collision 3
 	melee_instance.ATTACKER_ID = attacker_id
 	melee_instance.ATTACKER_TEAM = attacker_team
-	melee_instance.facing_dir = facing_dir
+	melee_instance.facing_dir = m_facing_dir
 	melee_instance.damage = base_damage
 	melee_instance.knockback = knockback
 	melee_hitbox.position.x = abs(melee_hitbox.position.x) * facing_dir
@@ -444,18 +515,18 @@ func exit_aiming() -> void:
 	is_aiming = false
 	aim_dot.visible = false
 	
-func shoot_projectile(base_damage: float, speed: float, knockback: float, angle: float, attacker_id: int, attacker_team: int) -> void:
+func shoot_projectile(base_damage: float, speed: float, knockback: float, p_facing_dir: float, angle: float, attacker_id: int, attacker_team: int) -> void:
 	var projectile_instance = PROJECTILE_SCENE.instantiate()
 	# Projectile Collision 2
 	projectile_instance.ATTACKER_ID = attacker_id
 	projectile_instance.ATTACKER_TEAM = attacker_team
 	projectile_instance.global_position = projectile.global_position
 	projectile_instance.facing_angle = angle
-	projectile_instance.facing_dir = facing_dir
+	projectile_instance.facing_dir = p_facing_dir
 	projectile_instance.damage = base_damage
 	projectile_instance.speed = speed
 	projectile_instance.knockback = knockback
-	get_parent().add_child(projectile_instance)
+	get_parent().get_parent().add_child(projectile_instance)
 
 func enemy_ai() -> void:
 	pass

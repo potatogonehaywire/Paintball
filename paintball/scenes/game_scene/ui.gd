@@ -1,8 +1,8 @@
 extends CanvasLayer
 
 # Color labels
-@onready var P1Cols: ColorRect = $P1Cols
-@onready var P2Cols: ColorRect = $P2Cols
+@onready var P1Cols: ColorRect = $PlayerUI1/Cols
+@onready var P2Cols: ColorRect = $PlayerUI2/Cols
 @export var red: Color = Color.RED
 @export var green: Color = Color.GREEN
 @export var blue: Color = Color.BLUE
@@ -11,7 +11,7 @@ extends CanvasLayer
 
 # Split screen
 const MERGE_PROPORTION = .75
-const SPLIT_PROPORTION = .8
+const SPLIT_PROPORTION = .75
 const SCREEN_MERGE_DIST = 5
 const SCREEN_MERGE_DIST_2D = 15
 @onready var container1: SubViewportContainer = $SubViewportContainer1
@@ -22,6 +22,10 @@ const SCREEN_MERGE_DIST_2D = 15
 @onready var player2: CharacterBody2D = viewport1.get_node("Map/Player2")
 var combined: bool = false
 
+# UI
+@onready var healthbar1: ColorRect = $PlayerUI1/ProgressBar
+@onready var healthbar2: ColorRect = $PlayerUI2/ProgressBar
+
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	# Color labels
@@ -30,6 +34,7 @@ func _ready() -> void:
 	var b = blue.srgb_to_linear()
 	var col_matrix = Basis(Vector3(r.r, r.g, r.b),Vector3(g.r, g.g, g.b),Vector3(b.r, b.g, b.b))
 	P1Cols.material.set_shader_parameter("colors", col_matrix)
+	P2Cols.material = P2Cols.material.duplicate()
 	P2Cols.material.set_shader_parameter("colors", col_matrix)
 	
 	# Split screen
@@ -44,10 +49,14 @@ func _ready() -> void:
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
-func _physics_process(delta: float) -> void:
+func _physics_process(_delta: float) -> void:
 	# Color labels
 	P1Cols.material.set_shader_parameter("cur_col", player_1_color/255.)
 	P2Cols.material.set_shader_parameter("cur_col", player_2_color/255.)
+	
+	# Health
+	healthbar1.anchor_right = .5 + .5 * (player1.HEALTH/100.)
+	healthbar2.anchor_right = .5 + .5 * player2.HEALTH/100.
 	
 	# Split screen
 	var p1_prop = player1.get_screen_transform().get_origin()/Vector2(get_window().size)
