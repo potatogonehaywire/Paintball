@@ -7,10 +7,12 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_yivnm"]
 shader = ExtResource("1_fx1lj")
-shader_parameter/custom_color_middle = Vector3(1, 0, 0)
-shader_parameter/custom_color_left = Vector3(0, 1, 0)
-shader_parameter/custom_color_right = Vector3(0, 0, 1)
-shader_parameter/fill_percentage = 0.0
+shader_parameter/c1 = Vector3(1, 0, 0)
+shader_parameter/c2 = Vector3(0, 1, 0)
+shader_parameter/c3 = Vector3(0, 0, 1)
+shader_parameter/p1 = 1.0
+shader_parameter/p2 = 1.0
+shader_parameter/p3 = 1.0
 
 [sub_resource type="Gradient" id="Gradient_geu3a"]
 
@@ -118,6 +120,8 @@ script = ExtResource("1_2kxbw")
 z_index = 8
 z_as_relative = false
 material = SubResource("ShaderMaterial_yivnm")
+position = Vector2(-0.5, -24.999992)
+scale = Vector2(0.7226563, 0.6171875)
 texture = SubResource("GradientTexture2D_682nn")
 
 [node name="TriangleBase" type="Sprite2D" parent="." unique_id=145619206]

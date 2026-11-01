@@ -18,7 +18,7 @@ void fragment() {
     vec3 w = vec3(uv.y,1.-uv.x-.5*uv.y,uv.x-.5*uv.y);
 
     // apply colors
-    vec3 col = w * vec3(p1,p2,p3) * mat3(c1, c2, c3);
+    vec3 col = mat3(c1, c2, c3) * (w * vec3(p1,p2,p3));
 
     // draw dot
     vec2 uvs = uv * vec2(1,0.866025); // square UV

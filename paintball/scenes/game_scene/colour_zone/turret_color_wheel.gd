@@ -16,17 +16,20 @@ var display_middle_rgb: Vector3 = Vector3.ZERO:
 	set(value):
 		display_middle_rgb = value
 		if is_inside_tree() and display_triangle and display_triangle.material is ShaderMaterial:
-			display_triangle.material.set_shader_parameter("custom_color_middle", value)
+			display_triangle.material.set_shader_parameter("c1", powv(value,2.2))
 var display_left_rgb: Vector3 = Vector3.ZERO:
 	set(value):
 		display_left_rgb = value
 		if is_inside_tree() and display_triangle and display_triangle.material is ShaderMaterial:
-			display_triangle.material.set_shader_parameter("custom_color_left", value)
+			display_triangle.material.set_shader_parameter("c2", powv(value,2.2))
 var display_right_rgb: Vector3 = Vector3.ZERO:
 	set(value):
 		display_right_rgb = value
 		if is_inside_tree() and display_triangle and display_triangle.material is ShaderMaterial:
-			display_triangle.material.set_shader_parameter("custom_color_right", value)
+			display_triangle.material.set_shader_parameter("c3", powv(value,2.2))
+
+func powv(v,f) -> Vector3:
+	return Vector3(v.x**f, v.y**f, v.z**f)
 
 # Score: Self: infinite, P1 P2 : 0
 var normalized_score: Vector3 = Vector3(0., 1., 0.)
@@ -47,14 +50,17 @@ var score: Vector3 = Vector3(0., 255., 0.): # Format: (P1, Turret, P2)
 
 		# Turret Display: Middle: turret, Left, Right: winning player color
 		if TEAM_ID == - 1:
-			display_middle_rgb = Globals.normalized_turret_color * normalized_score.y
+			display_middle_rgb = Globals.normalized_turret_color
 			display_left_rgb = diluted_sides_rgb
 			display_right_rgb = diluted_sides_rgb
+			display_triangle.material.set_shader_parameter("p1", normalized_score.y)
 
 func _ready() -> void:
 	if display_triangle and display_triangle.material:
 		display_triangle.material = display_triangle.material.duplicate()
 	score = Vector3(0., 255., 0.)
+	display_triangle.material.set_shader_parameter("p2", 1)
+	display_triangle.material.set_shader_parameter("p3", 1)
 	spawn_animation()
 	
 func captured() -> void:
