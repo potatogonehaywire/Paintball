@@ -22,7 +22,7 @@ void fragment() {
 
     // draw dot
     vec2 uvs = uv * vec2(1,0.866025); // square UV
-    vec2 dp = (p1 * vec2(0.5, 0.866025) + p3 * vec2(1,0) + vec2(.5, 0.433012)*1e-10)/(p1+p2+p3+1e-10); // dot position
+    vec2 dp = (p1 * vec2(0.5, 0.866025) + p3 * vec2(1,0) + vec2(.5, 0.288675)*1e-10)/(p1+p2+p3+1e-10); // dot position
     float dot_mix = clamp((dot_size - length(uvs - dp)) * resolution, 0., 1.);
     col = mix(col, vec3(1,1,1), dot_mix);
 

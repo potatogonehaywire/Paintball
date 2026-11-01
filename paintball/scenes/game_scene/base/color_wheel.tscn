@@ -14,8 +14,8 @@ shader = ExtResource("1_olyei")
 shader_parameter/c1 = Vector3(1, 0, 0)
 shader_parameter/c2 = Vector3(0, 1, 0)
 shader_parameter/c3 = Vector3(0, 0, 1)
-shader_parameter/p1 = 0.0
-shader_parameter/p2 = 0.0
+shader_parameter/p1 = 1.0
+shader_parameter/p2 = 1.0
 shader_parameter/p3 = 1.0
 
 [node name="ColorWheel" type="Node2D" unique_id=920039219]
